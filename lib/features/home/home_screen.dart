@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:html' as html;
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -101,6 +102,7 @@ class _HomeScreenState extends State<HomeScreen>
   PortfolioVoiceService? _voiceService;
   bool _isAgentSpeaking = false;
   bool _voiceInitialized = false;
+  bool _micPermissionDialogShown = false;
   StreamSubscription? _voiceMessageSub;
   StreamSubscription? _voiceStateSub;
 
@@ -219,17 +221,22 @@ class _HomeScreenState extends State<HomeScreen>
             'role': message.isUser ? 'user' : 'agent',
             'message': message.text,
           });
-          _isAgentSpeaking = !message.isUser;
         });
         if (!message.isUser) _resetIdleTimer();
       });
 
       _voiceStateSub = _voiceService!.stateStream.listen((state) {
         if (!mounted) return;
-        if (state == VoiceState.listening || state == VoiceState.idle) {
-          setState(() => _isAgentSpeaking = false);
-        } else if (state == VoiceState.speaking) {
-          setState(() => _isAgentSpeaking = true);
+        setState(() {
+          if (state == VoiceState.listening || state == VoiceState.idle) {
+            _isAgentSpeaking = false;
+          } else if (state == VoiceState.speaking) {
+            _isAgentSpeaking = true;
+          }
+        });
+        if (state == VoiceState.error && !_micPermissionDialogShown) {
+          _micPermissionDialogShown = true;
+          _showMicPermissionDialog();
         }
       });
 
@@ -252,8 +259,44 @@ class _HomeScreenState extends State<HomeScreen>
         _triggerWelcome();
       }
     } catch (e) {
-      debugPrint('Voice initialization error: $e');
+      final errorMsg = e.toString().toLowerCase();
+      final isMicError = errorMsg.contains('permission') ||
+          errorMsg.contains('denied') ||
+          errorMsg.contains('microphone') ||
+          errorMsg.contains('notallowederror') ||
+          errorMsg.contains('media');
+      if (isMicError && mounted && !_micPermissionDialogShown) {
+        _micPermissionDialogShown = true;
+        _showMicPermissionDialog();
+      } else {
+        debugPrint('Voice initialization error: $e');
+      }
     }
+  }
+
+  void _showMicPermissionDialog() {
+    if (!mounted) return;
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      barrierColor: Colors.black.withOpacity(0.55),
+      builder: (ctx) => _MicPermissionDialog(
+        onAllow: () async {
+          Navigator.of(ctx).pop();
+          _micPermissionDialogShown = false;
+          try {
+            await html.window.navigator.mediaDevices
+                ?.getUserMedia({'audio': true});
+            await _initializeVoiceAgent();
+          } catch (_) {
+            if (mounted && !_micPermissionDialogShown) {
+              _micPermissionDialogShown = true;
+              _showMicPermissionDialog();
+            }
+          }
+        },
+      ),
+    );
   }
 
   void _triggerWelcome() {
@@ -309,7 +352,8 @@ class _HomeScreenState extends State<HomeScreen>
           setState(() {
             _conversation.add({
               'role': 'agent',
-              'message': 'Voice agent is connecting. Please try again shortly.',
+              'message':
+                  'Voice assistant is connecting. Please try again shortly.',
             });
           });
         }
@@ -331,7 +375,11 @@ class _HomeScreenState extends State<HomeScreen>
       builder: (context) => _MobileModal(
         walletType: type,
         isDark: isDark,
-        firebaseService: _firebaseService,
+        projects: _projects,
+        services: _services,
+        books: _books,
+        socials: _socials,
+        cv: _cv,
         onClose: () => Navigator.of(context).pop(),
       ),
     ).then((_) => _closeWallet());
@@ -347,7 +395,8 @@ class _HomeScreenState extends State<HomeScreen>
     return Scaffold(
       body: Stack(
         children: [
-          BackgroundEffects(isDark: isDark, controller: _backgroundController),
+          BackgroundEffects(
+              isDark: isDark, controller: _backgroundController),
           SafeArea(
             child: isMobile
                 ? _MobileLayout(
@@ -376,11 +425,101 @@ class _HomeScreenState extends State<HomeScreen>
                     onCloseWallet: _closeWallet,
                     firebaseService: _firebaseService,
                     voiceService: _voiceService,
+                    projects: _projects,
+                    services: _services,
+                    books: _books,
+                    socials: _socials,
+                    cv: _cv,
                   ),
           ),
         ],
       ),
     );
+  }
+}
+
+class _MicPermissionDialog extends StatelessWidget {
+  final VoidCallback onAllow;
+
+  const _MicPermissionDialog({required this.onAllow});
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final cs = theme.colorScheme;
+
+    return Dialog(
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(AppConstants.radiusXL),
+      ),
+      child: Container(
+        constraints: const BoxConstraints(maxWidth: 320),
+        padding: const EdgeInsets.all(AppConstants.space28),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: 56,
+              height: 56,
+              decoration: BoxDecoration(
+                color: cs.primaryContainer,
+                shape: BoxShape.circle,
+              ),
+              child: Icon(Icons.mic_outlined, size: 28, color: cs.primary),
+            ),
+            const SizedBox(height: AppConstants.space16),
+            Text(
+              'Microphone Access',
+              style: theme.textTheme.titleMedium?.copyWith(
+                fontWeight: FontWeight.w700,
+              ),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: AppConstants.space8),
+            Text(
+              'Allow microphone access to talk with the voice assistant and explore this portfolio.',
+              style: theme.textTheme.bodySmall?.copyWith(
+                color: cs.onSurfaceVariant,
+                height: 1.6,
+              ),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: AppConstants.space20),
+            SizedBox(
+              width: double.infinity,
+              child: FilledButton.icon(
+                onPressed: onAllow,
+                icon: const Icon(Icons.mic, size: 18),
+                label: const Text('Allow Microphone'),
+                style: FilledButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(
+                      vertical: AppConstants.space12),
+                  shape: RoundedRectangleBorder(
+                    borderRadius:
+                        BorderRadius.circular(AppConstants.radiusMD),
+                  ),
+                ),
+              ),
+            ),
+            const SizedBox(height: AppConstants.space10),
+            Text(
+              'When your browser asks, tap "Allow" to continue.',
+              style: theme.textTheme.labelSmall?.copyWith(
+                color: cs.onSurfaceVariant.withOpacity(0.65),
+              ),
+              textAlign: TextAlign.center,
+            ),
+          ],
+        ),
+      ),
+    )
+        .animate()
+        .fadeIn(duration: 250.ms)
+        .scale(
+          begin: const Offset(0.92, 0.92),
+          duration: 250.ms,
+          curve: Curves.easeOut,
+        );
   }
 }
 
@@ -397,6 +536,11 @@ class _DesktopLayout extends StatelessWidget {
   final VoidCallback onCloseWallet;
   final FirebaseService firebaseService;
   final PortfolioVoiceService? voiceService;
+  final List<ProjectModel> projects;
+  final List<ServiceModel> services;
+  final List<BookModel> books;
+  final List<SocialModel> socials;
+  final CvModel? cv;
 
   const _DesktopLayout({
     required this.isDark,
@@ -411,6 +555,11 @@ class _DesktopLayout extends StatelessWidget {
     required this.onCloseWallet,
     required this.firebaseService,
     this.voiceService,
+    this.projects = const [],
+    this.services = const [],
+    this.books = const [],
+    this.socials = const [],
+    this.cv,
   });
 
   @override
@@ -430,6 +579,11 @@ class _DesktopLayout extends StatelessWidget {
                 onClose: onCloseWallet,
                 isCompact: isTablet,
                 firebaseService: firebaseService,
+                projects: projects,
+                services: services,
+                books: books,
+                socials: socials,
+                cv: cv,
               ),
               Expanded(
                 child: Center(
@@ -451,6 +605,11 @@ class _DesktopLayout extends StatelessWidget {
                 onClose: onCloseWallet,
                 isCompact: isTablet,
                 firebaseService: firebaseService,
+                projects: projects,
+                services: services,
+                books: books,
+                socials: socials,
+                cv: cv,
               ),
             ],
           ),
@@ -622,13 +781,21 @@ class _MobileWalletCard extends StatelessWidget {
 class _MobileModal extends StatelessWidget {
   final WalletType walletType;
   final bool isDark;
-  final FirebaseService firebaseService;
+  final List<ProjectModel> projects;
+  final List<ServiceModel> services;
+  final List<BookModel> books;
+  final List<SocialModel> socials;
+  final CvModel? cv;
   final VoidCallback onClose;
 
   const _MobileModal({
     required this.walletType,
     required this.isDark,
-    required this.firebaseService,
+    required this.projects,
+    required this.services,
+    required this.books,
+    required this.socials,
+    required this.cv,
     required this.onClose,
   });
 
@@ -694,74 +861,34 @@ class _MobileModal extends StatelessWidget {
   Widget _buildContent() {
     switch (walletType) {
       case WalletType.projects:
-        return StreamBuilder<List<ProjectModel>>(
-          stream: firebaseService.getProjects(),
-          builder: (context, snapshot) {
-            if (snapshot.connectionState == ConnectionState.waiting) {
-              return const Center(child: CircularProgressIndicator());
-            }
-            return ProjectsContent(
-              projects: snapshot.data ?? [],
-              isDark: isDark,
-              isMobile: true,
-            );
-          },
+        return ProjectsContent(
+          projects: projects,
+          isDark: isDark,
+          isMobile: true,
         );
       case WalletType.services:
-        return StreamBuilder<List<ServiceModel>>(
-          stream: firebaseService.getServices(),
-          builder: (context, snapshot) {
-            if (snapshot.connectionState == ConnectionState.waiting) {
-              return const Center(child: CircularProgressIndicator());
-            }
-            return ServicesContent(
-              services: snapshot.data ?? [],
-              isDark: isDark,
-              isMobile: true,
-            );
-          },
+        return ServicesContent(
+          services: services,
+          isDark: isDark,
+          isMobile: true,
         );
       case WalletType.books:
-        return StreamBuilder<List<BookModel>>(
-          stream: firebaseService.getBooks(),
-          builder: (context, snapshot) {
-            if (snapshot.connectionState == ConnectionState.waiting) {
-              return const Center(child: CircularProgressIndicator());
-            }
-            return BooksContent(
-              books: snapshot.data ?? [],
-              isDark: isDark,
-              isMobile: true,
-            );
-          },
+        return BooksContent(
+          books: books,
+          isDark: isDark,
+          isMobile: true,
         );
       case WalletType.social:
-        return StreamBuilder<List<SocialModel>>(
-          stream: firebaseService.getSocial(),
-          builder: (context, snapshot) {
-            if (snapshot.connectionState == ConnectionState.waiting) {
-              return const Center(child: CircularProgressIndicator());
-            }
-            return SocialContent(
-              socials: snapshot.data ?? [],
-              isDark: isDark,
-              isMobile: true,
-            );
-          },
+        return SocialContent(
+          socials: socials,
+          isDark: isDark,
+          isMobile: true,
         );
       case WalletType.cv:
-        return StreamBuilder<CvModel?>(
-          stream: firebaseService.getCv(),
-          builder: (context, snapshot) {
-            if (snapshot.connectionState == ConnectionState.waiting) {
-              return const Center(child: CircularProgressIndicator());
-            }
-            return CvContent(
-              cv: snapshot.data,
-              isDark: isDark,
-              isMobile: true,
-            );
-          },
+        return CvContent(
+          cv: cv,
+          isDark: isDark,
+          isMobile: true,
         );
       case WalletType.contact:
         return _ContactContent(isDark: isDark);

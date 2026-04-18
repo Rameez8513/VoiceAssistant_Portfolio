@@ -73,47 +73,16 @@ class TopBar extends StatelessWidget {
                 ),
               ],
             ],
-          ).animate().fadeIn(duration: AppConstants.durationMedium).slideX(
+          )
+              .animate()
+              .fadeIn(duration: AppConstants.durationMedium)
+              .slideX(
                 begin: -0.1,
                 duration: AppConstants.durationMedium,
                 curve: AppConstants.curveStandard,
               ),
           const Spacer(),
-          Container(
-            padding: const EdgeInsets.symmetric(
-              horizontal: AppConstants.space12,
-              vertical: AppConstants.space6,
-            ),
-            decoration: BoxDecoration(
-              color: AppColors.success.withOpacity(0.1),
-              borderRadius: BorderRadius.circular(AppConstants.radiusFull),
-              border: Border.all(
-                color: AppColors.success.withOpacity(0.3),
-                width: 1,
-              ),
-            ),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Container(
-                  width: 6,
-                  height: 6,
-                  decoration: const BoxDecoration(
-                    color: AppColors.success,
-                    shape: BoxShape.circle,
-                  ),
-                ),
-                const SizedBox(width: AppConstants.space6),
-                Text(
-                  'Available',
-                  style: theme.textTheme.labelSmall?.copyWith(
-                    color: AppColors.success,
-                    fontWeight: FontWeight.w500,
-                  ),
-                ),
-              ],
-            ),
-          )
+          _AvailableBadge(theme: theme)
               .animate()
               .fadeIn(
                 delay: const Duration(milliseconds: 100),
@@ -146,6 +115,94 @@ class TopBar extends StatelessWidget {
                 duration: AppConstants.durationMedium,
                 curve: AppConstants.curveStandard,
               ),
+        ],
+      ),
+    );
+  }
+}
+
+class _AvailableBadge extends StatelessWidget {
+  final ThemeData theme;
+
+  const _AvailableBadge({required this.theme});
+
+  static const _green = Color(0xFF22C55E);
+  static const _greenGlow = Color(0xFF16A34A);
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(
+        horizontal: AppConstants.space12,
+        vertical: AppConstants.space6,
+      ),
+      decoration: BoxDecoration(
+        color: _green.withOpacity(0.12),
+        borderRadius: BorderRadius.circular(AppConstants.radiusFull),
+        border: Border.all(
+          color: _green.withOpacity(0.55),
+          width: 1.5,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: _green.withOpacity(0.18),
+            blurRadius: 10,
+            spreadRadius: 0,
+          ),
+        ],
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Stack(
+            alignment: Alignment.center,
+            children: [
+              Container(
+                width: 10,
+                height: 10,
+                decoration: BoxDecoration(
+                  color: _green.withOpacity(0.25),
+                  shape: BoxShape.circle,
+                ),
+              )
+                  .animate(onPlay: (c) => c.repeat())
+                  .scale(
+                    begin: const Offset(1.0, 1.0),
+                    end: const Offset(2.2, 2.2),
+                    duration: const Duration(milliseconds: 1600),
+                    curve: Curves.easeOut,
+                  )
+                  .fadeOut(
+                    begin: 0.7,
+                    duration: const Duration(milliseconds: 1600),
+                    curve: Curves.easeOut,
+                  ),
+              Container(
+                width: 8,
+                height: 8,
+                decoration: BoxDecoration(
+                  color: _green,
+                  shape: BoxShape.circle,
+                  boxShadow: [
+                    BoxShadow(
+                      color: _greenGlow.withOpacity(0.6),
+                      blurRadius: 6,
+                      spreadRadius: 1,
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(width: AppConstants.space8),
+          Text(
+            'Available for Work',
+            style: theme.textTheme.labelSmall?.copyWith(
+              color: _green,
+              fontWeight: FontWeight.w700,
+              letterSpacing: 0.3,
+            ),
+          ),
         ],
       ),
     );

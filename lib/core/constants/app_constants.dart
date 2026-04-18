@@ -5,7 +5,7 @@ class AppConstants {
 
   static const String appName = 'Ramiz Mehmood';
   static const String appRole = 'Computer Scientist & AI Researcher';
-  static const String appEmail = 'ramizmehmood8513@gmail.com';
+  static const String appEmail = '2022cs401@student.uet.edu.pk';
   static const String appInitials = 'RM';
   static const String appCopyright = '© 2026 Ramiz. All rights reserved.';
 
@@ -19,6 +19,7 @@ class AppConstants {
   static const double space18 = 18.0;
   static const double space20 = 20.0;
   static const double space24 = 24.0;
+  static const double space28 = 28.0;
   static const double space32 = 32.0;
   static const double space40 = 40.0;
   static const double space48 = 48.0;

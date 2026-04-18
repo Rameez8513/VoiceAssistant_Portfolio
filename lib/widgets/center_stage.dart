@@ -32,7 +32,9 @@ class CenterStage extends StatefulWidget {
 class _CenterStageState extends State<CenterStage> {
   final ScrollController _scrollController = ScrollController();
   VoiceState _voiceState = VoiceState.idle;
+  VoiceState _displayedVoiceState = VoiceState.idle;
   StreamSubscription? _voiceStateSub;
+  Timer? _speakingDebounce;
 
   @override
   void initState() {
@@ -43,10 +45,31 @@ class _CenterStageState extends State<CenterStage> {
   void _subscribeVoiceState() {
     _voiceStateSub?.cancel();
     _voiceStateSub = widget.voiceService?.stateStream.listen((s) {
-      if (mounted) setState(() => _voiceState = s);
+      if (!mounted) return;
+      _voiceState = s;
+      _updateDisplayedState(s);
     });
     if (widget.voiceService != null) {
       _voiceState = widget.voiceService!.currentState;
+      _displayedVoiceState = _voiceState;
+    }
+  }
+
+  void _updateDisplayedState(VoiceState newState) {
+    _speakingDebounce?.cancel();
+
+    if (newState == VoiceState.speaking) {
+      _speakingDebounce = Timer(const Duration(milliseconds: 120), () {
+        if (!mounted || _voiceState != VoiceState.speaking) return;
+        setState(() => _displayedVoiceState = VoiceState.speaking);
+      });
+    } else if (newState == VoiceState.listening) {
+      _speakingDebounce = Timer(const Duration(milliseconds: 200), () {
+        if (!mounted) return;
+        setState(() => _displayedVoiceState = VoiceState.listening);
+      });
+    } else {
+      setState(() => _displayedVoiceState = newState);
     }
   }
 
@@ -74,6 +97,7 @@ class _CenterStageState extends State<CenterStage> {
 
   @override
   void dispose() {
+    _speakingDebounce?.cancel();
     _voiceStateSub?.cancel();
     _scrollController.dispose();
     super.dispose();
@@ -85,8 +109,7 @@ class _CenterStageState extends State<CenterStage> {
     if (widget.isMobile) return _buildMobile(context, hasConversation);
     return LayoutBuilder(builder: (context, constraints) {
       final h = constraints.maxHeight.isFinite ? constraints.maxHeight : 700.0;
-      return SizedBox(
-          height: h, child: _buildDesktop(context, hasConversation));
+      return SizedBox(height: h, child: _buildDesktop(context, hasConversation));
     });
   }
 
@@ -102,7 +125,10 @@ class _CenterStageState extends State<CenterStage> {
         ] else
           const SizedBox(height: 16),
         _PremiumVoiceOrb(
-            isDark: widget.isDark, isMobile: false, voiceState: _voiceState),
+          isDark: widget.isDark,
+          isMobile: false,
+          voiceState: _displayedVoiceState,
+        ),
         const SizedBox(height: 20),
         if (hasConversation)
           Expanded(
@@ -110,7 +136,7 @@ class _CenterStageState extends State<CenterStage> {
               conversation: widget.conversation,
               scrollController: _scrollController,
               isMobile: false,
-              voiceState: _voiceState,
+              voiceState: _displayedVoiceState,
             ),
           )
         else
@@ -119,7 +145,7 @@ class _CenterStageState extends State<CenterStage> {
           isDark: widget.isDark,
           onTap: widget.onQuestionTap,
           isMobile: false,
-          voiceState: _voiceState,
+          voiceState: _displayedVoiceState,
         ),
         const SizedBox(height: 16),
       ],
@@ -135,7 +161,10 @@ class _CenterStageState extends State<CenterStage> {
           const SizedBox(height: 20),
         ],
         _PremiumVoiceOrb(
-            isDark: widget.isDark, isMobile: true, voiceState: _voiceState),
+          isDark: widget.isDark,
+          isMobile: true,
+          voiceState: _displayedVoiceState,
+        ),
         const SizedBox(height: 18),
         if (hasConversation) ...[
           ConstrainedBox(
@@ -144,7 +173,7 @@ class _CenterStageState extends State<CenterStage> {
               conversation: widget.conversation,
               scrollController: _scrollController,
               isMobile: true,
-              voiceState: _voiceState,
+              voiceState: _displayedVoiceState,
             ),
           ),
           const SizedBox(height: 12),
@@ -153,7 +182,7 @@ class _CenterStageState extends State<CenterStage> {
           isDark: widget.isDark,
           onTap: widget.onQuestionTap,
           isMobile: true,
-          voiceState: _voiceState,
+          voiceState: _displayedVoiceState,
         ),
         const SizedBox(height: 16),
       ],
@@ -324,7 +353,8 @@ class _TypingIndicatorState extends State<_TypingIndicator>
                 size: 14, color: widget.cs.onPrimaryContainer),
           ),
           Container(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+            padding:
+                const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
             decoration: BoxDecoration(
               color: widget.cs.surfaceContainerHigh,
               borderRadius: const BorderRadius.only(
@@ -367,7 +397,10 @@ class _TypingIndicatorState extends State<_TypingIndicator>
           ),
         ],
       ),
-    ).animate().fadeIn(duration: 200.ms).slideX(begin: -0.05, duration: 200.ms);
+    )
+        .animate()
+        .fadeIn(duration: 200.ms)
+        .slideX(begin: -0.05, duration: 200.ms);
   }
 }
 
@@ -408,7 +441,8 @@ class _MessageBubble extends StatelessWidget {
         Flexible(
           child: Container(
             constraints: const BoxConstraints(maxWidth: 380),
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            padding:
+                const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
             decoration: BoxDecoration(
               color: isUser ? cs.primary : cs.surfaceContainerHigh,
               borderRadius: BorderRadius.only(
@@ -673,7 +707,8 @@ class _PremiumVoiceOrbState extends State<_PremiumVoiceOrb>
                           children: [
                             Positioned.fill(
                               child: Transform.rotate(
-                                angle: _rotateCtrl.value * 2 * math.pi * 0.5,
+                                angle:
+                                    _rotateCtrl.value * 2 * math.pi * 0.5,
                                 child: Container(
                                   decoration: BoxDecoration(
                                     gradient: SweepGradient(
@@ -725,12 +760,15 @@ class _PremiumVoiceOrbState extends State<_PremiumVoiceOrb>
                                             10)
                                     .abs()
                                 : (4 +
-                                        math.sin((_breathCtrl.value * math.pi) +
-                                                i * 1.2) *
+                                        math.sin(
+                                                (_breathCtrl.value *
+                                                        math.pi) +
+                                                    i * 1.2) *
                                             3)
                                     .abs();
                             return Container(
-                              margin: const EdgeInsets.symmetric(horizontal: 2),
+                              margin:
+                                  const EdgeInsets.symmetric(horizontal: 2),
                               width: 3,
                               height: h.clamp(3.0, 18.0),
                               decoration: BoxDecoration(
@@ -746,11 +784,14 @@ class _PremiumVoiceOrbState extends State<_PremiumVoiceOrb>
               ),
             );
           },
-        ).animate().fadeIn(delay: 300.ms, duration: 700.ms).scale(
-            begin: const Offset(0.75, 0.75),
-            delay: 300.ms,
-            duration: 700.ms,
-            curve: Curves.elasticOut),
+        )
+            .animate()
+            .fadeIn(delay: 300.ms, duration: 700.ms)
+            .scale(
+                begin: const Offset(0.75, 0.75),
+                delay: 300.ms,
+                duration: 700.ms,
+                curve: Curves.elasticOut),
         const SizedBox(height: 14),
         AnimatedSwitcher(
           duration: const Duration(milliseconds: 300),
@@ -837,7 +878,8 @@ class _WaveformPainter extends CustomPainter {
       final radius = size.width * 0.28;
       for (int i = 0; i <= pts; i++) {
         final angle = (i / pts) * math.pi * 2;
-        final noise = math.sin(angle * 3 + breathValue * math.pi * 2) * 4;
+        final noise =
+            math.sin(angle * 3 + breathValue * math.pi * 2) * 4;
         final r = radius + noise;
         final x = cx + math.cos(angle) * r;
         final y = cy + math.sin(angle) * r;
@@ -898,7 +940,8 @@ class _StatusLabel extends StatelessWidget {
             child: SizedBox(
               width: 8,
               height: 8,
-              child: CircularProgressIndicator(strokeWidth: 1.5, color: color),
+              child: CircularProgressIndicator(
+                  strokeWidth: 1.5, color: color),
             ),
           )
         else
@@ -906,7 +949,8 @@ class _StatusLabel extends StatelessWidget {
             width: 6,
             height: 6,
             margin: const EdgeInsets.only(right: 7),
-            decoration: BoxDecoration(color: color, shape: BoxShape.circle),
+            decoration:
+                BoxDecoration(color: color, shape: BoxShape.circle),
           ),
         Text(
           label,
@@ -944,6 +988,19 @@ class _QuickActions extends StatelessWidget {
   bool get _isEnabled =>
       voiceState == VoiceState.listening || voiceState == VoiceState.idle;
 
+  String get _statusText {
+    switch (voiceState) {
+      case VoiceState.connecting:
+        return 'Connecting to assistant...';
+      case VoiceState.processing:
+        return 'Assistant is thinking...';
+      case VoiceState.speaking:
+        return 'Assistant is speaking...';
+      default:
+        return '';
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
@@ -956,17 +1013,11 @@ class _QuickActions extends StatelessWidget {
         children: [
           AnimatedSwitcher(
             duration: const Duration(milliseconds: 250),
-            child: !_isEnabled
+            child: !_isEnabled && _statusText.isNotEmpty
                 ? Padding(
                     padding: const EdgeInsets.only(bottom: 8),
                     child: Text(
-                      voiceState == VoiceState.connecting
-                          ? 'Connecting to voice agent...'
-                          : voiceState == VoiceState.processing
-                              ? 'Agent is thinking...'
-                              : voiceState == VoiceState.speaking
-                                  ? 'Agent is speaking...'
-                                  : '',
+                      _statusText,
                       key: ValueKey(voiceState),
                       style: theme.textTheme.labelSmall
                           ?.copyWith(color: cs.onSurfaceVariant),

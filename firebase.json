@@ -1,1 +1,71 @@
-{"flutter":{"platforms":{"android":{"default":{"projectId":"portfolio-54852","appId":"1:698278768669:android:26cc675f43e3c4d17616f4","fileOutput":"android/app/google-services.json"}},"dart":{"lib/firebase_options.dart":{"projectId":"portfolio-54852","configurations":{"android":"1:698278768669:android:26cc675f43e3c4d17616f4","ios":"1:698278768669:ios:6c116bde072d1b497616f4","macos":"1:698278768669:ios:6c116bde072d1b497616f4","web":"1:698278768669:web:dbc11413082c17f07616f4","windows":"1:698278768669:web:dbc11413082c17f07616f4"}}}}}}
+{
+  "flutter": {
+    "platforms": {
+      "android": {
+        "default": {
+          "projectId": "portfolio-54852",
+          "appId": "1:698278768669:android:26cc675f43e3c4d17616f4",
+          "fileOutput": "android/app/google-services.json"
+        }
+      },
+      "dart": {
+        "lib/firebase_options.dart": {
+          "projectId": "portfolio-54852",
+          "configurations": {
+            "android": "1:698278768669:android:26cc675f43e3c4d17616f4",
+            "ios": "1:698278768669:ios:6c116bde072d1b497616f4",
+            "macos": "1:698278768669:ios:6c116bde072d1b497616f4",
+            "web": "1:698278768669:web:dbc11413082c17f07616f4",
+            "windows": "1:698278768669:web:dbc11413082c17f07616f4"
+          }
+        }
+      }
+    }
+  },
+  "hosting": {
+    "public": "build/web",
+    "ignore": [
+      "firebase.json",
+      "**/.*",
+      "**/node_modules/**"
+    ],
+    "rewrites": [
+      {
+        "source": "**",
+        "destination": "/index.html"
+      }
+    ],
+    "headers": [
+      {
+        "source": "**",
+        "headers": [
+          {
+            "key": "Cache-Control",
+            "value": "public, max-age=3600"
+          },
+          {
+            "key": "X-Content-Type-Options",
+            "value": "nosniff"
+          },
+          {
+            "key": "X-Frame-Options",
+            "value": "DENY"
+          },
+          {
+            "key": "X-XSS-Protection",
+            "value": "1; mode=block"
+          }
+        ]
+      },
+      {
+        "source": "**/*.@(jpg|jpeg|gif|png|svg|webp|js|css|woff|woff2|ttf|eot|ico)",
+        "headers": [
+          {
+            "key": "Cache-Control",
+            "value": "public, max-age=31536000, immutable"
+          }
+        ]
+      }
+    ]
+  }
+}

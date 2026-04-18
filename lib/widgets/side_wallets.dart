@@ -36,6 +36,11 @@ class SideWallets extends StatelessWidget {
   final VoidCallback onClose;
   final bool isCompact;
   final FirebaseService firebaseService;
+  final List<ProjectModel> projects;
+  final List<ServiceModel> services;
+  final List<BookModel> books;
+  final List<SocialModel> socials;
+  final CvModel? cv;
 
   const SideWallets({
     super.key,
@@ -46,6 +51,11 @@ class SideWallets extends StatelessWidget {
     required this.onClose,
     this.isCompact = false,
     required this.firebaseService,
+    this.projects = const [],
+    this.services = const [],
+    this.books = const [],
+    this.socials = const [],
+    this.cv,
   });
 
   @override
@@ -53,7 +63,7 @@ class SideWallets extends StatelessWidget {
     final wallets = side == WalletSide.left ? _leftWallets : _rightWallets;
     final isExpanded = activeWallet != null && wallets.contains(activeWallet);
 
-    final collapsedWidth = isCompact ? 56.0 : AppConstants.sidebarCollapsed;
+    const collapsedWidth = 82.0;
     final expandedWidth = isCompact ? 320.0 : AppConstants.sidebarExpanded;
 
     return AnimatedContainer(
@@ -76,7 +86,11 @@ class SideWallets extends StatelessWidget {
                 isDark: isDark,
                 walletType: activeWallet!,
                 onClose: onClose,
-                firebaseService: firebaseService,
+                projects: projects,
+                services: services,
+                books: books,
+                socials: socials,
+                cv: cv,
               ),
             ),
         ],
@@ -100,8 +114,7 @@ class _WalletNav extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final colorScheme = theme.colorScheme;
+    final colorScheme = Theme.of(context).colorScheme;
 
     return Container(
       color: colorScheme.surface,
@@ -114,7 +127,7 @@ class _WalletNav extends StatelessWidget {
 
           return Padding(
             padding: const EdgeInsets.symmetric(
-              horizontal: AppConstants.space12,
+              horizontal: AppConstants.space8,
               vertical: AppConstants.space4,
             ),
             child: _NavItem(
@@ -162,32 +175,41 @@ class _NavItem extends StatelessWidget {
       child: InkWell(
         onTap: onTap,
         borderRadius: BorderRadius.circular(AppConstants.radiusMD),
-        child: Container(
+        child: SizedBox(
           width: double.infinity,
-          padding: const EdgeInsets.all(AppConstants.space12),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(
-                type.icon,
-                color: isActive
-                    ? colorScheme.onSecondaryContainer
-                    : colorScheme.onSurfaceVariant,
-                size: AppConstants.iconMD,
-              ),
-              const SizedBox(height: AppConstants.space4),
-              Text(
-                type.displayName,
-                style: theme.textTheme.labelSmall?.copyWith(
+          child: Padding(
+            padding: const EdgeInsets.symmetric(
+              horizontal: AppConstants.space6,
+              vertical: AppConstants.space10,
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(
+                  type.icon,
                   color: isActive
                       ? colorScheme.onSecondaryContainer
                       : colorScheme.onSurfaceVariant,
+                  size: AppConstants.iconMD,
                 ),
-                textAlign: TextAlign.center,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-              ),
-            ],
+                const SizedBox(height: AppConstants.space4),
+                FittedBox(
+                  fit: BoxFit.scaleDown,
+                  child: Text(
+                    type.displayName,
+                    style: theme.textTheme.labelSmall?.copyWith(
+                      color: isActive
+                          ? colorScheme.onSecondaryContainer
+                          : colorScheme.onSurfaceVariant,
+                      fontWeight:
+                          isActive ? FontWeight.w600 : FontWeight.normal,
+                    ),
+                    textAlign: TextAlign.center,
+                    maxLines: 1,
+                  ),
+                ),
+              ],
+            ),
           ),
         ),
       ),
@@ -199,13 +221,21 @@ class _WalletPanel extends StatelessWidget {
   final bool isDark;
   final WalletType walletType;
   final VoidCallback onClose;
-  final FirebaseService firebaseService;
+  final List<ProjectModel> projects;
+  final List<ServiceModel> services;
+  final List<BookModel> books;
+  final List<SocialModel> socials;
+  final CvModel? cv;
 
   const _WalletPanel({
     required this.isDark,
     required this.walletType,
     required this.onClose,
-    required this.firebaseService,
+    required this.projects,
+    required this.services,
+    required this.books,
+    required this.socials,
+    required this.cv,
   });
 
   @override
@@ -259,79 +289,39 @@ class _WalletPanel extends StatelessWidget {
   Widget _buildContent() {
     switch (walletType) {
       case WalletType.projects:
-        return StreamBuilder<List<ProjectModel>>(
-          stream: firebaseService.getProjects(),
-          builder: (context, snapshot) {
-            if (snapshot.connectionState == ConnectionState.waiting) {
-              return const Center(child: CircularProgressIndicator());
-            }
-            return ProjectsContent(
-              projects: snapshot.data ?? [],
-              isDark: isDark,
-              isMobile: false,
-            );
-          },
+        return ProjectsContent(
+          projects: projects,
+          isDark: isDark,
+          isMobile: false,
         );
       case WalletType.services:
-        return StreamBuilder<List<ServiceModel>>(
-          stream: firebaseService.getServices(),
-          builder: (context, snapshot) {
-            if (snapshot.connectionState == ConnectionState.waiting) {
-              return const Center(child: CircularProgressIndicator());
-            }
-            return ServicesContent(
-              services: snapshot.data ?? [],
-              isDark: isDark,
-              isMobile: false,
-            );
-          },
+        return ServicesContent(
+          services: services,
+          isDark: isDark,
+          isMobile: false,
         );
       case WalletType.books:
-        return StreamBuilder<List<BookModel>>(
-          stream: firebaseService.getBooks(),
-          builder: (context, snapshot) {
-            if (snapshot.connectionState == ConnectionState.waiting) {
-              return const Center(child: CircularProgressIndicator());
-            }
-            return BooksContent(
-              books: snapshot.data ?? [],
-              isDark: isDark,
-              isMobile: false,
-            );
-          },
+        return BooksContent(
+          books: books,
+          isDark: isDark,
+          isMobile: false,
         );
       case WalletType.social:
-        return StreamBuilder<List<SocialModel>>(
-          stream: firebaseService.getSocial(),
-          builder: (context, snapshot) {
-            if (snapshot.connectionState == ConnectionState.waiting) {
-              return const Center(child: CircularProgressIndicator());
-            }
-            return SocialContent(
-              socials: snapshot.data ?? [],
-              isDark: isDark,
-              isMobile: false,
-            );
-          },
+        return SocialContent(
+          socials: socials,
+          isDark: isDark,
+          isMobile: false,
         );
       case WalletType.cv:
-        return StreamBuilder<CvModel?>(
-          stream: firebaseService.getCv(),
-          builder: (context, snapshot) {
-            if (snapshot.connectionState == ConnectionState.waiting) {
-              return const Center(child: CircularProgressIndicator());
-            }
-            return CvContent(
-              cv: snapshot.data,
-              isDark: isDark,
-              isMobile: false,
-            );
-          },
+        return CvContent(
+          cv: cv,
+          isDark: isDark,
+          isMobile: false,
         );
       case WalletType.contact:
-        return Center(
+        return const Center(
           child: Padding(
-            padding: const EdgeInsets.all(AppConstants.space24),
+            padding: EdgeInsets.all(AppConstants.space24),
             child: Text('Contact content here'),
           ),
         );

@@ -35,7 +35,7 @@ class _AppState extends State<App> {
       themeMode: _mode,
       toggleTheme: _toggle,
       child: MaterialApp(
-        title: 'Alex Morgan',
+        title: 'Ramiz- AI Assistant',
         debugShowCheckedModeBanner: false,
         themeMode: _mode,
         theme: AppTheme.lightTheme,
